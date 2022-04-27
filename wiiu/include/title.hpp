@@ -38,7 +38,7 @@
 #include <utility>
 #include <vector>
 #include <malloc.h>
-#include <tinyxml2.h>
+#include <mxml.h>
 
 #include <coreinit/mcp.h>
 #include <nn/act.h>

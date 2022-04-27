@@ -25,6 +25,7 @@
  */
 
 #include "title.hpp"
+#include <stdint.h>
 
 static std::unordered_map<AccountUid, std::vector<Title>> titles;
 static std::unordered_map<uint64_t, SDL_Texture*> icons;
@@ -259,38 +260,32 @@ void loadTitles()
                         fread(metaXml, 1, meta_size, metaXmlFile);
                         fclose(metaXmlFile);
 
-                        tinyxml2::XMLDocument doc;
-                        int res = doc.Parse(metaXml, meta_size);
-                        free(metaXml);
-
-                        if (res != 0) {
+                        mxml_node_t *xt = NULL;
+                        xt = mxmlLoadString(NULL, metaXml, MXML_OPAQUE_CALLBACK);
+                        if(xt == NULL)
                             continue;
-                        }
-
-                        tinyxml2::XMLElement* root = doc.FirstChildElement();
-                        if (!root) {
+                        mxml_node_t *xm = mxmlGetFirstChild(xt);
+                        if(xm == NULL)
                             continue;
-                        }
-
-                        tinyxml2::XMLElement* titleIdElement = root->FirstChildElement("title_id");
-                        if (titleIdElement) {
-                            const char* titleIdText = titleIdElement->GetText();
-                            titleId = strtoull(titleIdText, NULL, 16);
+                        mxml_node_t *xn = mxmlFindElement(xm, xt, "title_id", "type", "hexBinary", MXML_DESCEND);
+                        if(xn) {
+                            titleId = strtoull(mxmlGetOpaque(xn), NULL, 16);
                         }
 
                         if (Configuration::getInstance().filter(titleId)) {
                             continue;
                         }
 
-                        tinyxml2::XMLElement* titleNameElement = root->FirstChildElement("shortname_en");
-                        if (titleNameElement) {
-                            titleName = titleNameElement->GetText();
+                        xn = mxmlFindElement(xm, xt, "shortname_en", "type", "string", MXML_DESCEND);
+                        if(xn) {
+                            titleName.assign(mxmlGetOpaque(xn));
                         }
 
-                        tinyxml2::XMLElement* titlePublisherElement = root->FirstChildElement("publisher_en");
-                        if (titlePublisherElement) {
-                            titlePublisher = titlePublisherElement->GetText();
+                        xn = mxmlFindElement(xm, xt, "publisher_en", "type", "string", MXML_DESCEND);
+                        if(xn) {
+                            titlePublisher.assign(mxmlGetOpaque(xn));
                         }
+                        mxmlDelete(xt);
                     }
                     else {
                         Logger::getInstance().log(Logger::WARN, "No meta.xml for save " + path + dir.entry(i));

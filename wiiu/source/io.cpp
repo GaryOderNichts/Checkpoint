@@ -48,19 +48,32 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath, int mo
         return;
     }
 
-    fseek(src, 0, SEEK_END);
-    uint64_t sz = ftell(src);
-    rewind(src);
+    char *buffer[3];
+    for (int i = 0; i < 3; i++) {
+        buffer[i] = (char *) aligned_alloc(0x40, IO_MAX_FILE_BUFFER);
+        if (buffer[i] == nullptr) {
+            fclose(src);
+            fclose(dst);
+            for (i--; i >= 0; i--)
+                free(buffer[i]);
 
-    uint8_t* buf    = new uint8_t[BUFFER_SIZE];
+            return;
+        }
+    }
+
+    setvbuf(src, buffer[0], _IOFBF, IO_MAX_FILE_BUFFER);
+    setvbuf(dst, buffer[1], _IOFBF, IO_MAX_FILE_BUFFER);
+
+    struct stat st;
+    if (stat(srcPath.c_str(), &st) < 0)
+        return;
+    uint64_t sz = st.st_size;
     uint64_t offset = 0;
-
-    size_t slashpos = srcPath.rfind("/");
-    g_currentFile   = srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1);
+    g_currentFile   = basename(srcPath.c_str());
 
     while (offset < sz) {
-        uint32_t count = fread((char*)buf, 1, BUFFER_SIZE, src);
-        fwrite((char*)buf, 1, count, dst);
+        uint32_t count = fread(buffer[2], 1, IO_MAX_FILE_BUFFER, src);
+        fwrite(buffer[2], 1, count, dst);
         offset += count;
 
         // avoid freezing the UI
@@ -69,13 +82,14 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath, int mo
         SDLH_Render();
     }
 
-    delete[] buf;
+    for (int i = 0; i < 3; i++)
+        free(buffer[i]);
+
     fclose(src);
     fclose(dst);
 
-    if (mode) {
+    if (mode)
         chmod(dstPath.c_str(), mode);
-    }
 
     g_isTransferringFile = false;
 }

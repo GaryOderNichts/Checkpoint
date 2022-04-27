@@ -39,7 +39,7 @@
 #include <unistd.h>
 #include <utility>
 
-#define BUFFER_SIZE 0x80000
+#define IO_MAX_FILE_BUFFER (1024 * 1024) // 1 MB
 
 typedef uint32_t AccountUid;
 
